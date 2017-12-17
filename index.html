@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  </head>
+  <body style="background-color:black;">
+    <div id="map-wrap" style="float:right; width: 500px; height: 500px;"></div>
+    <div id="main-wrap" style="float:left">
+      <canvas id="readout" width="500" height="500"></canvas>
+      <dl style="color: white;">
+        <dt style="float:left; width: 120px; clear:both;">Distance to Turn:</dt>
+        <dd style="float:left; width: 120px;"id="distance">#</dd>
+        <dt style="float:left; width: 120px; clear:both;">Target Heading:</dt>
+        <dd style="float:left; width: 120px;"id="heading">#</dd>
+      </dl>
+    </div>
+    <script src='./axios.js'></script>
+    <script src='./ledState.js'></script>
+    <script src='./navigation.js'></script>
+    <script src='./virtual-prototype.js'></script>
+    <script src='https://maps.googleapis.com/maps/api/js?key=AIzaSyCyaXZtnEX-ED2q_9qVGdGlkxf9ICNtMHo&callback=onMapsLoaded'></script>
+  </body>
+</html>
