@@ -27,18 +27,91 @@ let heading = null;
 let distance = Infinity;
 let waypoints = [];
 let turns = [];
-let nextWaypoint = 0;
-let nextTurn = 0;
+let nextWaypointIndex = 0;
+let nextTurnIndex = 0;
+
+let deviceHeading = 0;
 
 const update = () => {
-  render(toLEDstate(heading, distance));
+  render(toLEDstate(heading + deviceHeading, distance));
   document.getElementById('distance').innerHTML = distance;
   document.getElementById('heading').innerHTML = heading;
+}
+
+if (window.DeviceOrientationEvent) {
+  // Listen for the deviceorientation event and handle the raw data
+  window.addEventListener('deviceorientation', function(eventData) {
+    console.log(eventData);
+    if(event.webkitCompassHeading) {
+      // Apple works only with this, alpha doesn't work
+      deviceHeading = event.webkitCompassHeading;
+    }
+    else deviceHeading = event.alpha || 0;
+    deviceHeading = (deviceHeading + 90) % 360;
+    document.getElementById('device').innerHTML = deviceHeading;
+    update();
+  });
 }
 
 function onMapsLoaded() {
   const directionsService = new google.maps.DirectionsService();
   const directionsDisplay = new google.maps.DirectionsRenderer();
+  let umarker;
+  let nmarker;
+
+  setInterval(() => {
+
+    navigator.geolocation.getCurrentPosition(function(position) {
+      const pos = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude
+      };
+
+      console.log(pos);
+
+      if (!umarker) {
+         umarker = new google.maps.Marker({
+          map,
+          label: "U",
+          position: pos
+        });
+      } else {
+        umarker.setPosition(pos);
+      }
+
+      if (waypoints.length) {
+        waypointDistance = getDistance(pos, waypoints[nextWaypointIndex]);
+        if (waypointDistance < 6) {
+          if (nextWaypointIndex < waypoints.length - 1){
+            nextWaypointIndex ++;
+          }
+        }
+        if (!nmarker) {
+          nmarker = new google.maps.Marker({
+            map,
+            label: "N",
+            position: waypoints[nextWaypointIndex]
+          });
+        } else {
+          nmarker.setPosition(waypoints[nextWaypointIndex]);
+        }
+        heading = getHeading(pos, waypoints[nextWaypointIndex]);
+        turnDistance = getDistance(pos, turns[nextTurnIndex]);
+        if (distance < 2) {
+          nextTurnIndex ++;
+          if (nextTurnIndex < turns.length) {
+            distance = getDistance(pos, turns[nextTurnIndex]);
+          } else {
+            distance = 0;
+          }
+        }
+        update();
+      }
+    }, function() {
+      handleLocationError(true, infoWindow, map.getCenter());
+    });
+  }, 4000);
+
   const map = new google.maps.Map(document.getElementById('map-wrap'));
   directionsDisplay.setMap(map);
 
@@ -46,6 +119,7 @@ function onMapsLoaded() {
     lat: 48.421566,
     lng: -123.3631124
   };
+
   const to = {
     lat: 48.4234358,
     lng: -123.3643227
@@ -57,27 +131,6 @@ function onMapsLoaded() {
       waypoints = getWaypoints(result);
       waypoints.push(to);
       directionsDisplay.setDirections(result);
-      const markers = [];
-      window.addEventListener('keypress', (evt) => {
-        if (evt.key === 'a') {
-          markers.push(new google.maps.Marker({
-            map,
-            position: waypoints[nextWaypoint]
-          }));
-          nextWaypoint ++;
-          heading = getHeading(waypoints[nextWaypoint - 1], waypoints[nextWaypoint]);
-          distance = getDistance(waypoints[nextWaypoint - 1], turns[nextTurn]);
-          if (distance < 2) {
-            nextTurn ++;
-            if (nextTurn < turns.length) {
-              distance = getDistance(waypoints[nextWaypoint - 1], turns[nextTurn]);
-            } else {
-              distance = 0;
-            }
-          }
-          update();
-        }
-      });
     })
     .catch((result) => console.log(result))
 }
