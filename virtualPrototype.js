@@ -1,4 +1,3 @@
-const toLEDstate = makeToLEDstate(32, 0.25, 100);
 const canvas = document.getElementById('readout');
 const context = canvas.getContext('2d');
 const radius = (Math.min(canvas.width, canvas.height) / 2) - 10;
@@ -7,6 +6,9 @@ context.lineWidth = 5;
 
 const render = (ledState) => {
   context.clearRect(0, 0, canvas.width, canvas.height);
+  if (!ledState) {
+    return;
+  }
   const numLEDs = ledState.length
   const rotateToNorth = Math.PI * (0.5 + (1/numLEDs));
   for (let i = 0; i < numLEDs; i ++) {
@@ -23,114 +25,61 @@ const render = (ledState) => {
   }
 }
 
-let heading = null;
-let distance = Infinity;
-let waypoints = [];
-let turns = [];
-let nextWaypointIndex = 0;
-let nextTurnIndex = 0;
-
 let deviceHeading = 0;
+let currentLocation;
+let currentRoute;
 
-const update = () => {
-  render(toLEDstate(heading + deviceHeading, distance));
-  document.getElementById('distance').innerHTML = distance;
-  document.getElementById('heading').innerHTML = heading;
+let drawRingInterval;
+
+const drawRing = () => {
+  if (currentRoute.waypoints.length === 0) {
+    clearInterval(drawRingInterval);
+    render(null);
+    return;
+  }
+  render(
+    LEDs.toLEDstate(
+      Maps.heading(currentLocation, currentRoute.waypoints[0]) + deviceHeading,
+      Maps.distance(currentLocation, currentRoute.waypoints[0])
+    )
+  );
 }
 
-if (window.DeviceOrientationEvent) {
-  // Listen for the deviceorientation event and handle the raw data
-  window.addEventListener('deviceorientation', function(eventData) {
-    console.log(eventData);
-    if(event.webkitCompassHeading) {
-      // Apple works only with this, alpha doesn't work
-      deviceHeading = event.webkitCompassHeading;
-    }
-    else deviceHeading = event.alpha || 0;
-    deviceHeading = (deviceHeading + 90) % 360;
-    document.getElementById('device').innerHTML = deviceHeading;
-    update();
-  });
+const updateReadouts = () => {
+  document.getElementById('device').innerHTML = deviceHeading;
+  document.getElementById('distance').innerHTML = Maps.distance(currentLocation, currentRoute.waypoints[0]);
+  document.getElementById('heading').innerHTML = Maps.heading(currentLocation, currentRoute.waypoints[0]);
 }
 
 function onMapsLoaded() {
-  const directionsService = new google.maps.DirectionsService();
-  const directionsDisplay = new google.maps.DirectionsRenderer();
-  let umarker;
-  let nmarker;
+  Maps.initialize();
 
-  setInterval(() => {
+  Device.onOrientation((heading) => {
+    deviceHeading = heading;
+    updateReadouts();
+  });
 
-    navigator.geolocation.getCurrentPosition(function(position) {
-      const pos = {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude
-      };
+  Device.onLocation((location) => {
+    currentLocation = location;
+    currentRoute = Maps.navigate(currentRoute, location);
+    updateReadouts();
+  });
 
-      console.log(pos);
-
-      if (!umarker) {
-         umarker = new google.maps.Marker({
-          map,
-          label: "U",
-          position: pos
-        });
-      } else {
-        umarker.setPosition(pos);
-      }
-
-      if (waypoints.length) {
-        waypointDistance = getDistance(pos, waypoints[nextWaypointIndex]);
-        if (waypointDistance < 6) {
-          if (nextWaypointIndex < waypoints.length - 1){
-            nextWaypointIndex ++;
-          }
+  Device.location()
+    .then((location) => {
+      currentLocation = location;
+      return Maps.route(
+        location,
+        {
+          lat: 48.4234358,
+          lng: -123.3643227
         }
-        if (!nmarker) {
-          nmarker = new google.maps.Marker({
-            map,
-            label: "N",
-            position: waypoints[nextWaypointIndex]
-          });
-        } else {
-          nmarker.setPosition(waypoints[nextWaypointIndex]);
-        }
-        heading = getHeading(pos, waypoints[nextWaypointIndex]);
-        turnDistance = getDistance(pos, turns[nextTurnIndex]);
-        if (distance < 2) {
-          nextTurnIndex ++;
-          if (nextTurnIndex < turns.length) {
-            distance = getDistance(pos, turns[nextTurnIndex]);
-          } else {
-            distance = 0;
-          }
-        }
-        update();
-      }
-    }, function() {
-      handleLocationError(true, infoWindow, map.getCenter());
-    });
-  }, 4000);
-
-  const map = new google.maps.Map(document.getElementById('map-wrap'));
-  directionsDisplay.setMap(map);
-
-  const from = {
-    lat: 48.421566,
-    lng: -123.3631124
-  };
-
-  const to = {
-    lat: 48.4234358,
-    lng: -123.3643227
-  };
-
-  makeGetRoute(directionsService)(from, to)
-    .then((result) => {
-      turns = getTurns(result);
-      waypoints = getWaypoints(result);
-      waypoints.push(to);
-      directionsDisplay.setDirections(result);
+      );
     })
-    .catch((result) => console.log(result))
+    .then((route) => {
+      currentRoute = route;
+      Device.run()
+      drawRingInterval = setInterval(drawRing, 16.6);
+      updateReadouts();
+    });
 }
