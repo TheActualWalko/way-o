@@ -4,27 +4,6 @@ const radius = (Math.min(canvas.width, canvas.height) / 2) - 10;
 
 context.lineWidth = 5;
 
-const render = (ledState) => {
-  context.clearRect(0, 0, canvas.width, canvas.height);
-  if (!ledState) {
-    return;
-  }
-  const numLEDs = ledState.length
-  const rotateToNorth = Math.PI * (0.5 + (1/numLEDs));
-  for (let i = 0; i < numLEDs; i ++) {
-    context.strokeStyle = `rgba(255,255,255,${ledState[i]})`;
-    context.beginPath();
-    context.arc(
-      canvas.width/2,
-      canvas.height/2,
-      radius,
-      (Math.PI * 2 * (i/numLEDs)) - (rotateToNorth - 0.01),
-      (Math.PI * 2 * ((i+1)/numLEDs)) - (rotateToNorth + 0.01)
-    );
-    context.stroke();
-  }
-}
-
 let deviceHeading = 0;
 let currentLocation;
 let currentRoute;
@@ -32,15 +11,14 @@ let currentRoute;
 let drawRingInterval;
 
 const drawRing = () => {
-  if (currentRoute.waypoints.length === 0) {
-    clearInterval(drawRingInterval);
-    render(null);
+  if (!currentRoute || currentRoute.waypoints.length === 0) {
+    Renderer.render(null);
     return;
   }
-  render(
+  Renderer.render(
     LEDs.toLEDstate(
       Maps.heading(currentLocation, currentRoute.waypoints[0]) + deviceHeading,
-      Maps.distance(currentLocation, currentRoute.waypoints[0])
+      Maps.distance(currentLocation, currentRoute.turns[0])
     )
   );
 }
@@ -48,38 +26,50 @@ const drawRing = () => {
 const updateReadouts = () => {
   document.getElementById('device').innerHTML = deviceHeading;
   document.getElementById('distance').innerHTML = Maps.distance(currentLocation, currentRoute.waypoints[0]);
-  document.getElementById('heading').innerHTML = Maps.heading(currentLocation, currentRoute.waypoints[0]);
+  document.getElementById('heading').innerHTML = Maps.heading(currentLocation, currentRoute.turns[0]);
+}
+
+function setDestination(destination) {
+  return Device.location()
+    .then((location) => Maps.route(location, destination)
+      .then((route) => {
+        currentRoute = route;
+        receiveLocation(location);
+        Maps.showPoints(route.waypoints);
+      })
+    );
+}
+
+function receiveLocation(location) {
+  currentLocation = location;
+
+  Maps.clearMarkers();
+  Maps.addMarkers([currentLocation], 'You', false);
+
+  if (!currentRoute) return;
+  let oldRoute = currentRoute;
+  currentRoute = Maps.navigate(currentRoute, location);
+  Maps.addMarkers(currentRoute.waypoints, 'W', true, true);
+  Maps.addMarkers(currentRoute.turns, 'T', true);
+
+  updateReadouts();
 }
 
 function onMapsLoaded() {
-  Maps.initialize();
+  Maps.initialize(document.getElementById('map-wrap'));
 
   Device.onOrientation((heading) => {
     deviceHeading = heading;
     updateReadouts();
   });
 
-  Device.onLocation((location) => {
-    currentLocation = location;
-    currentRoute = Maps.navigate(currentRoute, location);
-    updateReadouts();
-  });
+  Device.onLocation(receiveLocation);
 
-  Device.location()
-    .then((location) => {
-      currentLocation = location;
-      return Maps.route(
-        location,
-        {
-          lat: 48.4234358,
-          lng: -123.3643227
-        }
-      );
-    })
-    .then((route) => {
-      currentRoute = route;
-      Device.run()
-      drawRingInterval = setInterval(drawRing, 16.6);
-      updateReadouts();
-    });
+  Device.run();
+  drawRingInterval = setInterval(drawRing, 16.6);
+
+  setDestination({
+    lat: 48.4234358,
+    lng: -123.3643227
+  });
 }
