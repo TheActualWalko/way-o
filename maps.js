@@ -1,7 +1,9 @@
 const Maps = (() => {
-  const TURN_PROXIMITY = 2;
-  const WAYPOINT_PROXIMITY = 6;
-  const TURN_WAYPOINT_OVERLAP_PROXIMITY = 3;
+  // use a big number here; streets can be pretty wide and location services sometimes glitches out by half a block.
+  const HIT_PROXIMITY_METRES = 10;
+
+  // this one doesn't have to be as big. just enough to account for for gmaps's tendency to put waypoints and turns almost on top of each other..
+  const OVERLAP_PROXIMITY_METRES = 2;
 
   let map;
   let directionsService;
@@ -38,7 +40,7 @@ const Maps = (() => {
       .filter((waypoint) => {
         let foundNearbyTurn = false;
         turns.forEach((turn) => {
-          if (distance(turn, waypoint) < TURN_WAYPOINT_OVERLAP_PROXIMITY) {
+          if (distance(turn, waypoint) < OVERLAP_PROXIMITY_METRES) {
             foundNearbyTurn = true;
           }
         })
@@ -73,10 +75,10 @@ const Maps = (() => {
         }
       });
   const navigate = (route, location) => ({
-    turns: distance(location, route.turns[0]) < TURN_PROXIMITY
+    turns: distance(location, route.turns[0]) < HIT_PROXIMITY_METRES
       ? route.turns.slice(1)
       : route.turns,
-    waypoints: distance(location, route.waypoints[0]) < WAYPOINT_PROXIMITY
+    waypoints: distance(location, route.waypoints[0]) < HIT_PROXIMITY_METRES
       ? route.waypoints.slice(1)
       : route.waypoints
   });
