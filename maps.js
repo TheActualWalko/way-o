@@ -1,9 +1,11 @@
 const Maps = (() => {
+  // how far does a user have to be from a waypoint or turn to "pass" it?
   // use a big number here; streets can be pretty wide and location services sometimes glitches out by half a block.
   const HIT_PROXIMITY_METRES = 10;
 
-  // this one doesn't have to be as big. just enough to account for for gmaps's tendency to put waypoints and turns almost on top of each other..
-  const OVERLAP_PROXIMITY_METRES = 2;
+  // if a waypoint is less than this distance from a turn, we ignore it.
+  // this one doesn't have to be as big.
+  const OVERLAP_PROXIMITY_METRES = 5;
 
   let map;
   let directionsService;
