@@ -8,9 +8,9 @@ let deviceHeading = 0;
 let currentLocation;
 let currentRoute;
 
-let drawRingInterval;
+let drawInterval;
 
-const drawRing = () => {
+const draw = () => {
   if (!currentRoute || currentRoute.waypoints.length === 0) {
     Renderer.render(null);
     return;
@@ -46,7 +46,9 @@ function receiveLocation(location) {
   Maps.clearMarkers();
   Maps.addMarkers([currentLocation], 'You', false);
 
+  // short circuit if there's nothing left to compute
   if (!currentRoute) return;
+
   let oldRoute = currentRoute;
   currentRoute = Maps.navigate(currentRoute, location);
   Maps.addMarkers(currentRoute.waypoints, 'W', true, true);
@@ -66,7 +68,7 @@ function onMapsLoaded() {
   Device.onLocation(receiveLocation);
 
   Device.run();
-  drawRingInterval = setInterval(drawRing, 16.6);
+  drawInterval = setInterval(draw, 16.6);
 
   setDestination({
     lat: 48.4234358,

@@ -36,6 +36,7 @@ const Maps = (() => {
       .map(({start_location}) => start_location)
       .map(computeLLpair);
 
+  // gets all waypoints that are not within OVERLAP_PROXIMITY_METRES from a turn
   const parseWaypoints = (route, turns) =>
     route.routes[0].overview_path
       .map(computeLLpair)
@@ -56,7 +57,7 @@ const Maps = (() => {
     directionsService = new google.maps.DirectionsService();
     directionsDisplay = new google.maps.DirectionsRenderer();
     directionsDisplay.setMap(map);
-  }
+  };
   const heading = (from, to) =>
     google.maps.geometry.spherical.computeHeading(
       ll(from),
@@ -104,7 +105,7 @@ const Maps = (() => {
     const bounds = new google.maps.LatLngBounds();
     points.forEach((coords) => bounds.extend(coords));
     map.fitBounds(bounds, 0.25);
-  }
+  };
   return {
     initialize,
     heading,
