@@ -1,17 +1,19 @@
 const LEDs = (() => {
   const NUM_LEDS = 32; // the number of lights on the device
-  const MAX_SPREAD = 0.25;// proportion of lights that activate above distance threshold
-  const MIN_SPREAD_LEDS = 1.5;// minimum number of lights that activate at low distances (should be at least 1)
-  const DISTANCE_THRESHOLD = 100; // distance below which light display will narrow
+  const MAX_SPREAD = 0.5;// proportion of lights that activate at 0 distance
+  const MIN_SPREAD = 2/NUM_LEDS; // minimum proportion of lights that activate (should be at least 2 lights)
+  const DISTANCE_THRESHOLD = 50; // distance below which light display will broaden
 
   const getIdealCenter = (heading) => (NUM_LEDS * (heading/360)) % NUM_LEDS
 
   const getSpread = (distance) => {
-    if (distance > DISTANCE_THRESHOLD) {
-      return (MAX_SPREAD / 2);
-    } else {
-      return (distance / DISTANCE_THRESHOLD) * (MAX_SPREAD / 2)
-    }
+    return Math.max(
+      MIN_SPREAD,
+      Math.min(
+        MAX_SPREAD,
+        MAX_SPREAD * (1 - (distance / DISTANCE_THRESHOLD))
+      )
+    );
   }
 
   const getLEDdistance = (index, center) => Math.min(
@@ -24,11 +26,11 @@ const LEDs = (() => {
     const output = [];
     const idealCenter = getIdealCenter(heading);
     const spreadFactor = getSpread(distance);
-    const spread = Math.max(MIN_SPREAD_LEDS, spreadFactor * NUM_LEDS);
+    const spread = spreadFactor * NUM_LEDS;
     for (let i = 0; i < NUM_LEDS; i ++) {
       const ledDistance = getLEDdistance(i, idealCenter);
-      if (ledDistance < spread) {
-        output.push(Math.sqrt(1 - (ledDistance / spread)));
+      if (ledDistance < spread / 2) {
+        output.push(Math.sqrt(1 - (ledDistance / (spread / 2))));
       } else {
         output.push(0);
       }

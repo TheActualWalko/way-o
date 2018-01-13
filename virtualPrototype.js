@@ -65,9 +65,9 @@ function onMapsLoaded() {
     updateReadouts();
   });
 
-  Device.onLocation(receiveLocation);
+  //Device.onLocation(receiveLocation);
 
-  Device.run();
+  //Device.run();
   drawInterval = setInterval(draw, 16.6);
 
   setDestination({
@@ -75,3 +75,7 @@ function onMapsLoaded() {
     lng: -123.3643227
   });
 }
+
+window.addEventListener('keypress', () => {
+  receiveLocation(currentRoute.waypoints[0]);
+});
